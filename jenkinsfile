@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+    stages {
+        stage('1. Git Clone') {
+            steps {
+                sh 'rm -f *'
+                git branch: 'main', url: 'https://github.com/Ashokb007/PG-Project.git'
+            }
+        }
+		stage('2. Front_End') {
+            steps {
+                sshagent(['front_end_key']) {
+				    sh 'scp -o StrictHostKeyChecking=no /var/lib/jenkins/PG-Project/index.html ubuntu@52.90.248.22:/var/www/html/'     
+                }
+            }
+        }
+         stage('3. Back_end') {
+            steps {
+                sshagent(['front_end_key']) {
+                sh 'scp -o StrictHostKeyChecking=no /var/lib/jenkins/PG-Project/*.php ubuntu@54.204.237.25:/var/www/html/'
+                    
+                }
+            }
+        }
+        stage ('4.DAST - OWASP ZAP') {
+           steps {
+               sshagent(['dast-key']) {
+               sh 'docker pull owasp/zap2docker-stable'
+               sh 'ssh -o StrictHostKeyChecking=no ubuntu@44.202.113.233 "sudo docker run --rm -v /home/ubuntu:/zap/wrk/:rw -t owasp/zap2docker-stable zap-full-scan.py -t http://52.90.248.22/index.html -J report_json || true" '
+              }      
+           }
+        }  
+    }
+}
